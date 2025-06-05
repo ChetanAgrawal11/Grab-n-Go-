@@ -1,18 +1,14 @@
 import { Restaurant } from "../models/restaurant.model.js";
 
-// Public: Get all restaurants, no filtering by owner
+// Public: Get all restaurants, no pagination
 export const getAllRestaurants = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = "" } = req.query;
+    const { search = "" } = req.query;
 
     const query = search ? { name: new RegExp(search, "i") } : {};
+    const data = await Restaurant.find(query);
 
-    const total = await Restaurant.countDocuments(query);
-    const data = await Restaurant.find(query)
-      .skip((page - 1) * limit)
-      .limit(Number(limit));
-
-    res.json({ total, page: +page, limit: +limit, data });
+    res.json({ total: data.length, data });
   } catch (error) {
     console.error("Error fetching restaurants:", error);
     res
@@ -21,10 +17,10 @@ export const getAllRestaurants = async (req, res) => {
   }
 };
 
-// Owner: Get only restaurants owned by logged-in owner
+// Owner: Get all restaurants owned by logged-in user
 export const getMyRestaurants = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = "" } = req.query;
+    const { search = "" } = req.query;
     const ownerId = req.user._id;
 
     const query = {
@@ -32,12 +28,8 @@ export const getMyRestaurants = async (req, res) => {
       ...(search && { name: new RegExp(search, "i") }),
     };
 
-    const total = await Restaurant.countDocuments(query);
-    const data = await Restaurant.find(query)
-      .skip((page - 1) * limit)
-      .limit(Number(limit));
-
-    res.json({ total, page: +page, limit: +limit, data });
+    const data = await Restaurant.find(query);
+    res.json({ total: data.length, data });
   } catch (error) {
     console.error("Error fetching owner restaurants:", error);
     res.status(500).json({
@@ -47,11 +39,12 @@ export const getMyRestaurants = async (req, res) => {
   }
 };
 
+// Create a new restaurant (Owner only)
 export const addRestaurant = async (req, res) => {
   try {
     const restaurant = await Restaurant.create({
       ...req.body,
-      owner: req.user._id,
+      owner: req.user._id, // enforce owner
     });
     res.status(201).json(restaurant);
   } catch (error) {
@@ -62,6 +55,7 @@ export const addRestaurant = async (req, res) => {
   }
 };
 
+// Get a specific restaurant by ID
 export const getRestaurantById = async (req, res) => {
   try {
     const restaurant = await Restaurant.findById(req.params.id);
@@ -77,6 +71,7 @@ export const getRestaurantById = async (req, res) => {
   }
 };
 
+// Update a restaurant (only if owner)
 export const updateRestaurant = async (req, res) => {
   try {
     const restaurant = await Restaurant.findById(req.params.id);
@@ -101,6 +96,7 @@ export const updateRestaurant = async (req, res) => {
   }
 };
 
+// Delete a restaurant (only if owner)
 export const deleteRestaurant = async (req, res) => {
   try {
     const restaurant = await Restaurant.findById(req.params.id);
@@ -118,5 +114,77 @@ export const deleteRestaurant = async (req, res) => {
     res
       .status(500)
       .json({ message: "Failed to delete restaurant", error: error.message });
+  }
+};
+
+export const addMenuItem = async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+    if (!restaurant)
+      return res.status(404).json({ message: "Restaurant not found" });
+
+    if (!restaurant.owner.equals(req.user._id)) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    restaurant.menu.push(req.body);
+    await restaurant.save();
+    res.status(201).json(restaurant.menu);
+  } catch (error) {
+    console.error("Add menu item error:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to add menu item", error: error.message });
+  }
+};
+
+// Update a specific menu item
+export const updateMenuItem = async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+    if (!restaurant)
+      return res.status(404).json({ message: "Restaurant not found" });
+
+    if (!restaurant.owner.equals(req.user._id)) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const item = restaurant.menu.id(req.params.itemId);
+    if (!item) return res.status(404).json({ message: "Menu item not found" });
+
+    Object.assign(item, req.body);
+    await restaurant.save();
+
+    res.json(item);
+  } catch (error) {
+    console.error("Update menu item error:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to update menu item", error: error.message });
+  }
+};
+
+export const deleteMenuItem = async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+    if (!restaurant)
+      return res.status(404).json({ message: "Restaurant not found" });
+
+    if (!restaurant.owner.equals(req.user._id)) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    const item = restaurant.menu.id(req.params.itemId);
+    if (!item) return res.status(404).json({ message: "Menu item not found" });
+
+    restaurant.menu.pull(item._id); // ✅ Correct way to remove
+    await restaurant.save();
+
+    res.json({ message: "Menu item deleted" });
+  } catch (error) {
+    console.error("Delete menu item error:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to delete menu item", error: error.message });
   }
 };

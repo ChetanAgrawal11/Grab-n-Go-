@@ -1,4 +1,4 @@
-import express from 'express';
+import express from "express";
 import {
   addRestaurant,
   getAllRestaurants,
@@ -6,22 +6,40 @@ import {
   getRestaurantById,
   updateRestaurant,
   deleteRestaurant,
-} from '../controllers/restaurant.controller.js';
-import { protectRoute } from '../middleware/protectRoute.js';
-import { restrictTo } from '../middleware/roleMiddleware.js';
+  addMenuItem,
+  updateMenuItem,
+  deleteMenuItem,
+} from "../controllers/restaurant.controller.js";
+
+import { protectRoute } from "../middleware/protectRoute.js";
+import { restrictTo } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
 
-// Protected routes - owners only
-router.get('/my', protectRoute, restrictTo('owner'), getMyRestaurants);
+// Owner-only routes
+router.get("/my", protectRoute, restrictTo("owner"), getMyRestaurants);
 
-router.get('/:id', getRestaurantById); // get restaurant by id
+router.get("/:id", getRestaurantById); // get restaurant by id
+router.get("/", getAllRestaurants); // get all restaurants (public)
 
-// Public route - fetching all restaurants (for users)
-router.get('/', getAllRestaurants);
+router.post("/", protectRoute, restrictTo("owner"), addRestaurant);
+router.put("/:id", protectRoute, restrictTo("owner"), updateRestaurant);
+router.delete("/:id", protectRoute, restrictTo("owner"), deleteRestaurant);
 
-router.post('/', protectRoute, restrictTo('owner'), addRestaurant);
-router.put('/:id', protectRoute, restrictTo('owner'), updateRestaurant);
-router.delete('/:id', protectRoute, restrictTo('owner'), deleteRestaurant);
+// Menu item routes (owner only)
+
+router.post("/:id/menu", protectRoute, restrictTo("owner"), addMenuItem);
+router.put(
+  "/:id/menu/:itemId",
+  protectRoute,
+  restrictTo("owner"),
+  updateMenuItem
+);
+router.delete(
+  "/:id/menu/:itemId",
+  protectRoute,
+  restrictTo("owner"),
+  deleteMenuItem
+);
 
 export default router;

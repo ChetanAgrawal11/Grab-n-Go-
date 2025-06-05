@@ -1,23 +1,46 @@
-import express from 'express';
+import express from "express";
 import {
-  addTiffin,
+  createTiffin,
   getAllTiffins,
   getTiffinById,
   updateTiffin,
   deleteTiffin,
-} from '../controllers/tiffin.controller.js';
-import { protectRoute } from '../middleware/protectRoute.js';
-import { restrictTo } from '../middleware/roleMiddleware.js';
+  approveMess,
+  markDaily,
+  requestMess,
+  getMyTiffins, // <-- import the new controller
+} from "../controllers/tiffin.controller.js";
+
+import { protectRoute } from "../middleware/protectRoute.js";
+import { restrictTo } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
 
-// Public routes - allow all users to view tiffins
-router.get('/getAllTiffins', getAllTiffins);
-router.get('/getTiffin/:id', getTiffinById);
+// Public routes
+router.get("/getAllTiffins", getAllTiffins);
+router.get("/getTiffin/:id", getTiffinById);
 
-// Protected routes - only owners can manage tiffins
-router.post('/createTiffin', protectRoute, restrictTo('owner'), addTiffin);
-router.put('/updateTiffin/:id', protectRoute, restrictTo('owner'), updateTiffin);
-router.delete('/deleteTiffin/:id', protectRoute, restrictTo('owner'), deleteTiffin);
+// Owner routes (protected + role)
+router.post("/createTiffin", protectRoute, restrictTo("owner"), createTiffin);
+router.put(
+  "/updateTiffin/:id",
+  protectRoute,
+  restrictTo("owner"),
+  updateTiffin
+);
+router.delete(
+  "/deleteTiffin/:id",
+  protectRoute,
+  restrictTo("owner"),
+  deleteTiffin
+);
+router.put("/approveMess/:id", protectRoute, restrictTo("owner"), approveMess);
+router.put("/markDaily/:id", protectRoute, restrictTo("owner"), markDaily);
+
+// User routes (protected + role)
+router.post("/requestMess/:id", protectRoute, restrictTo("user"), requestMess);
+
+// **New route: Get current owner's tiffins**
+router.get("/my", protectRoute, restrictTo("owner"), getMyTiffins);
 
 export default router;

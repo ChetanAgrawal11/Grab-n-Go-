@@ -1,73 +1,171 @@
-import { Tiffin } from '../models/tiffin.model.js';
+import Tiffin from "../models/tiffin.model.js";
 
-export const addTiffin = async (req, res) => {
+// Create a new tiffin service (owner only)
+export const createTiffin = async (req, res) => {
   try {
-    const tiffin = await Tiffin.create({ ...req.body, owner: req.user._id });
-    res.status(201).json(tiffin);
+    const ownerId = req.user._id;
+
+    const newTiffin = new Tiffin({
+      ...req.body,
+      owner: ownerId,
+    });
+
+    const savedTiffin = await newTiffin.save();
+    res.status(201).json({ data: savedTiffin });
   } catch (error) {
-    console.error('Error adding tiffin:', error);
-    res.status(500).json({ message: 'Failed to add tiffin', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Failed to create tiffin", error: error.message });
   }
 };
 
+// Get all tiffins (public)
 export const getAllTiffins = async (req, res) => {
   try {
-    const { page = 1, limit = 5, search = '' } = req.query;
-    const query = search ? { name: new RegExp(search, 'i') } : {};
-    const total = await Tiffin.countDocuments(query);
-    const data = await Tiffin.find(query).skip((page - 1) * limit).limit(Number(limit));
-    res.json({ total, page: +page, limit: +limit, data });
+    const tiffins = await Tiffin.find();
+    res.status(200).json({ data: tiffins });
   } catch (error) {
-    console.error('Error fetching tiffins:', error);
-    res.status(500).json({ message: 'Failed to fetch tiffins', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Failed to fetch tiffins", error: error.message });
   }
 };
 
+// Get one tiffin by ID (public)
 export const getTiffinById = async (req, res) => {
   try {
     const tiffin = await Tiffin.findById(req.params.id);
     if (!tiffin) {
-      return res.status(404).json({ message: 'Tiffin not found' });
+      return res.status(404).json({ message: "Tiffin not found" });
     }
-    res.json(tiffin);
+    res.status(200).json({ data: tiffin });
   } catch (error) {
-    console.error('Error fetching tiffin:', error);
-    res.status(500).json({ message: 'Failed to fetch tiffin', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Failed to fetch tiffin", error: error.message });
   }
 };
 
+// Update a tiffin (owner only)
 export const updateTiffin = async (req, res) => {
   try {
-    const tiffin = await Tiffin.findById(req.params.id);
+    const tiffin = await Tiffin.findOne({
+      _id: req.params.id,
+      owner: req.user._id,
+    });
     if (!tiffin) {
-      return res.status(404).json({ message: 'Tiffin not found' });
+      return res
+        .status(404)
+        .json({ message: "Tiffin not found or unauthorized" });
     }
-    if (!tiffin.owner.equals(req.user._id)) {
-      return res.status(403).json({ message: 'Unauthorized' });
-    }
-
-    const updated = await Tiffin.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json(updated);
+    Object.assign(tiffin, req.body);
+    const updatedTiffin = await tiffin.save();
+    res.status(200).json({ data: updatedTiffin });
   } catch (error) {
-    console.error('Error updating tiffin:', error);
-    res.status(500).json({ message: 'Failed to update tiffin', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Failed to update tiffin", error: error.message });
   }
 };
 
+// Delete a tiffin (owner only)
 export const deleteTiffin = async (req, res) => {
+  try {
+    const tiffin = await Tiffin.findOneAndDelete({
+      _id: req.params.id,
+      owner: req.user._id,
+    });
+    if (!tiffin) {
+      return res
+        .status(404)
+        .json({ message: "Tiffin not found or unauthorized" });
+    }
+    res.status(200).json({ message: "Tiffin deleted successfully" });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Failed to delete tiffin", error: error.message });
+  }
+};
+
+// Approve mess service (owner only)
+export const approveMess = async (req, res) => {
+  try {
+    const tiffin = await Tiffin.findOne({
+      _id: req.params.id,
+      owner: req.user._id,
+    });
+    if (!tiffin) {
+      return res
+        .status(404)
+        .json({ message: "Tiffin not found or unauthorized" });
+    }
+    tiffin.messApproved = true;
+    await tiffin.save();
+    res.status(200).json({ message: "Mess approved", data: tiffin });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Failed to approve mess", error: error.message });
+  }
+};
+
+// Mark daily attendance or status update (owner only)
+export const markDaily = async (req, res) => {
+  try {
+    const tiffin = await Tiffin.findOne({
+      _id: req.params.id,
+      owner: req.user._id,
+    });
+    if (!tiffin) {
+      return res
+        .status(404)
+        .json({ message: "Tiffin not found or unauthorized" });
+    }
+    // Example: update daily attendance record (customize as per your schema)
+    tiffin.dailyAttendance = req.body.dailyAttendance || tiffin.dailyAttendance;
+    await tiffin.save();
+    res.status(200).json({ message: "Daily record updated", data: tiffin });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Failed to update daily record", error: error.message });
+  }
+};
+
+// User requests mess subscription (user role)
+export const requestMess = async (req, res) => {
   try {
     const tiffin = await Tiffin.findById(req.params.id);
     if (!tiffin) {
-      return res.status(404).json({ message: 'Tiffin not found' });
-    }
-    if (!tiffin.owner.equals(req.user._id)) {
-      return res.status(403).json({ message: 'Unauthorized' });
+      return res.status(404).json({ message: "Tiffin not found" });
     }
 
-    await Tiffin.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Tiffin deleted successfully' });
+    // Add user to requests array (avoid duplicates)
+    if (!tiffin.requests) {
+      tiffin.requests = [];
+    }
+    if (!tiffin.requests.includes(req.user._id)) {
+      tiffin.requests.push(req.user._id);
+      await tiffin.save();
+    }
+
+    res.status(200).json({ message: "Mess request submitted", data: tiffin });
   } catch (error) {
-    console.error('Error deleting tiffin:', error);
-    res.status(500).json({ message: 'Failed to delete tiffin', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Failed to request mess", error: error.message });
+  }
+};
+
+// Get all tiffins owned by current logged-in owner
+export const getMyTiffins = async (req, res) => {
+  try {
+    const tiffins = await Tiffin.find({ owner: req.user._id });
+    res.status(200).json({ data: tiffins });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Failed to fetch your tiffins", error: error.message });
   }
 };
