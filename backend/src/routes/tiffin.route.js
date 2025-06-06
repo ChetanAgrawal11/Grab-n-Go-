@@ -11,6 +11,8 @@ import {
   markDaily,
   requestMess,
   getMyTiffins,
+  getRequestsForOwner, // <--- Add this import
+  updateRequestStatus,
 } from "../controllers/tiffin.controller.js";
 
 import { protectRoute } from "../middleware/protectRoute.js";
@@ -40,7 +42,26 @@ router.put("/approveMess/:id", protectRoute, restrictTo("owner"), approveMess);
 router.put("/markDaily/:id", protectRoute, restrictTo("owner"), markDaily);
 
 // User routes (protected + role)
-router.post("/requestMess/:id", protectRoute, restrictTo("user"), requestMess);
+router.post(
+  "/requestMess/:id",
+  protectRoute,
+  restrictTo("student"),
+  requestMess
+);
+// Owner routes for managing requests
+router.get(
+  "/myRequests",
+  protectRoute,
+  restrictTo("owner"),
+  getRequestsForOwner
+);
+
+router.put(
+  "/updateRequestStatus/:tiffinId/:userId",
+  protectRoute,
+  restrictTo("owner"),
+  updateRequestStatus
+);
 
 // Owner's own tiffins
 router.get("/my", protectRoute, restrictTo("owner"), getMyTiffins);

@@ -41,7 +41,19 @@ const tiffinSchema = new mongoose.Schema({
     },
   ],
 
-  requests: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+  // Example snippet from Tiffin schema (add this if not already)
+  requests: [
+    {
+      user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      status: {
+        type: String,
+        enum: ["pending", "approved", "rejected"],
+        default: "pending",
+      },
+      requestedAt: { type: Date, default: Date.now },
+      approvedAt: Date,
+    },
+  ],
 });
 
 const Tiffin = mongoose.model("Tiffin", tiffinSchema);
