@@ -1,3 +1,5 @@
+// backend/routes/tiffin.routes.js
+
 import express from "express";
 import {
   createTiffin,
@@ -8,7 +10,7 @@ import {
   approveMess,
   markDaily,
   requestMess,
-  getMyTiffins, // <-- import the new controller
+  getMyTiffins,
 } from "../controllers/tiffin.controller.js";
 
 import { protectRoute } from "../middleware/protectRoute.js";
@@ -40,7 +42,7 @@ router.put("/markDaily/:id", protectRoute, restrictTo("owner"), markDaily);
 // User routes (protected + role)
 router.post("/requestMess/:id", protectRoute, restrictTo("user"), requestMess);
 
-// **New route: Get current owner's tiffins**
+// Owner's own tiffins
 router.get("/my", protectRoute, restrictTo("owner"), getMyTiffins);
 
 export default router;

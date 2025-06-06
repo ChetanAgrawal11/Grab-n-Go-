@@ -5,8 +5,37 @@ export const createTiffin = async (req, res) => {
   try {
     const ownerId = req.user._id;
 
+    console.log("Incoming request body:", req.body);
+
+    const {
+      name,
+      description,
+      startDate,
+      weeklyMenu,
+      status,
+      providesMonthlyMess,
+    } = req.body;
+
+    // Map weeklyMenu keys (capitalize) to weeklyPlan keys (lowercase)
+    const weeklyPlan = weeklyMenu
+      ? {
+          monday: weeklyMenu.Monday || "",
+          tuesday: weeklyMenu.Tuesday || "",
+          wednesday: weeklyMenu.Wednesday || "",
+          thursday: weeklyMenu.Thursday || "",
+          friday: weeklyMenu.Friday || "",
+          saturday: weeklyMenu.Saturday || "",
+          sunday: weeklyMenu.Sunday || "",
+        }
+      : {};
+
     const newTiffin = new Tiffin({
-      ...req.body,
+      name,
+      description,
+      status,
+      weeklyPlan,
+      messStartDate: startDate,
+      providesMonthlyMess: providesMonthlyMess || false,
       owner: ownerId,
     });
 
@@ -19,10 +48,16 @@ export const createTiffin = async (req, res) => {
   }
 };
 
-// Get all tiffins (public)
 export const getAllTiffins = async (req, res) => {
   try {
-    const tiffins = await Tiffin.find();
+    const tiffins = await Tiffin.find()
+      .select(
+        "name weeklyPlan messStartDate owner userStatus providesMonthlyMess messApproved description status"
+      )
+      .populate("owner", "name email")
+      .populate("userStatus.user", "name email")
+      .lean();
+
     res.status(200).json({ data: tiffins });
   } catch (error) {
     res
@@ -31,10 +66,13 @@ export const getAllTiffins = async (req, res) => {
   }
 };
 
-// Get one tiffin by ID (public)
 export const getTiffinById = async (req, res) => {
   try {
-    const tiffin = await Tiffin.findById(req.params.id);
+    const tiffin = await Tiffin.findById(req.params.id)
+      .populate("owner", "name email")
+      .populate("userStatus.user", "name email")
+      .lean();
+
     if (!tiffin) {
       return res.status(404).json({ message: "Tiffin not found" });
     }
@@ -46,7 +84,6 @@ export const getTiffinById = async (req, res) => {
   }
 };
 
-// Update a tiffin (owner only)
 export const updateTiffin = async (req, res) => {
   try {
     const tiffin = await Tiffin.findOne({
@@ -68,7 +105,6 @@ export const updateTiffin = async (req, res) => {
   }
 };
 
-// Delete a tiffin (owner only)
 export const deleteTiffin = async (req, res) => {
   try {
     const tiffin = await Tiffin.findOneAndDelete({
@@ -88,7 +124,6 @@ export const deleteTiffin = async (req, res) => {
   }
 };
 
-// Approve mess service (owner only)
 export const approveMess = async (req, res) => {
   try {
     const tiffin = await Tiffin.findOne({
@@ -110,7 +145,6 @@ export const approveMess = async (req, res) => {
   }
 };
 
-// Mark daily attendance or status update (owner only)
 export const markDaily = async (req, res) => {
   try {
     const tiffin = await Tiffin.findOne({
@@ -122,7 +156,6 @@ export const markDaily = async (req, res) => {
         .status(404)
         .json({ message: "Tiffin not found or unauthorized" });
     }
-    // Example: update daily attendance record (customize as per your schema)
     tiffin.dailyAttendance = req.body.dailyAttendance || tiffin.dailyAttendance;
     await tiffin.save();
     res.status(200).json({ message: "Daily record updated", data: tiffin });
@@ -133,7 +166,6 @@ export const markDaily = async (req, res) => {
   }
 };
 
-// User requests mess subscription (user role)
 export const requestMess = async (req, res) => {
   try {
     const tiffin = await Tiffin.findById(req.params.id);
@@ -141,10 +173,10 @@ export const requestMess = async (req, res) => {
       return res.status(404).json({ message: "Tiffin not found" });
     }
 
-    // Add user to requests array (avoid duplicates)
     if (!tiffin.requests) {
       tiffin.requests = [];
     }
+
     if (!tiffin.requests.includes(req.user._id)) {
       tiffin.requests.push(req.user._id);
       await tiffin.save();
@@ -158,10 +190,16 @@ export const requestMess = async (req, res) => {
   }
 };
 
-// Get all tiffins owned by current logged-in owner
 export const getMyTiffins = async (req, res) => {
   try {
-    const tiffins = await Tiffin.find({ owner: req.user._id });
+    const tiffins = await Tiffin.find({ owner: req.user._id })
+      .select(
+        "name weeklyPlan messStartDate owner userStatus providesMonthlyMess messApproved description status"
+      )
+      .populate("owner", "name email")
+      .populate("userStatus.user", "name email")
+      .lean();
+
     res.status(200).json({ data: tiffins });
   } catch (error) {
     res

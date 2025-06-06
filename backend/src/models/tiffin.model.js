@@ -12,6 +12,9 @@ const dailyStatusSchema = new mongoose.Schema({
 
 const tiffinSchema = new mongoose.Schema({
   name: { type: String, required: true },
+  description: { type: String }, // optional
+  status: { type: String, default: "Inactive" }, // optional
+
   area: String,
   owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
 
@@ -37,6 +40,8 @@ const tiffinSchema = new mongoose.Schema({
       dailyStatus: [dailyStatusSchema],
     },
   ],
+
+  requests: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 });
 
 const Tiffin = mongoose.model("Tiffin", tiffinSchema);
